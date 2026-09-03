@@ -12,8 +12,12 @@ class AboutSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final isMobile = Responsive.isMobile(context);
     final pad = Responsive.horizontalPadding(context);
+    final isTablet = Responsive.isTablet(context);
     // 2 columns on phones, 4 on everything wider (fits all 4 stats in one row).
     final gridColumns = isMobile ? 2 : 4;
+    // Wide desktop cards would look oversized/tall at aspect 1.35 with 4
+    // columns of ~280px+ width each — flatten them out as the grid widens.
+    final gridAspectRatio = isMobile ? 1.5 : (isTablet ? 1.9 : 2.5);
 
     return Container(
       width: double.infinity,
@@ -78,7 +82,7 @@ class AboutSection extends StatelessWidget {
                   physics: const NeverScrollableScrollPhysics(),
                   crossAxisSpacing: 14,
                   mainAxisSpacing: 14,
-                  childAspectRatio: isMobile ? 1.5 : 1.35,
+                  childAspectRatio: gridAspectRatio,
                   children: const [
                     _StatCard(value: "400+", label: "Problems Solved"),
                     _StatCard(value: "2+", label: "Live Projects"),

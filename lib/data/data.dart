@@ -8,6 +8,7 @@ class PortfolioData {
   static const String phone = "+91 8210597336";
 
   static const String githubUrl = "https://github.com/nakshaman";
+  // TODO: replace with your real LinkedIn URL
   static const String linkedinUrl = "https://linkedin.com/in/YOUR_USERNAME";
   static const String instagramCloneRepo = "https://github.com/nakshaman/instagram";
   static const String hiveChatRepo = "https://github.com/nakshaman/HiveChat";

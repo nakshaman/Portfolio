@@ -39,19 +39,21 @@ class ProjectsSection extends StatelessWidget {
                           ),
                       ],
                     )
-                  : Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (int i = 0; i < PortfolioData.projects.length; i++) ...[
-                          Expanded(
-                            child: AnimatedSection(
-                              delay: (i * 150).ms,
-                              child: _ProjectCard(project: PortfolioData.projects[i]),
+                  : IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (int i = 0; i < PortfolioData.projects.length; i++) ...[
+                            Expanded(
+                              child: AnimatedSection(
+                                delay: (i * 150).ms,
+                                child: _ProjectCard(project: PortfolioData.projects[i]),
+                              ),
                             ),
-                          ),
-                          if (i != PortfolioData.projects.length - 1) const SizedBox(width: 28),
+                            if (i != PortfolioData.projects.length - 1) const SizedBox(width: 28),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
               const SizedBox(height: 44),
               AnimatedSection(
