@@ -12,6 +12,8 @@ class AboutSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final isMobile = Responsive.isMobile(context);
     final pad = Responsive.horizontalPadding(context);
+    // 2 columns on phones, 4 on everything wider (fits all 4 stats in one row).
+    final gridColumns = isMobile ? 2 : 4;
 
     return Container(
       width: double.infinity,
@@ -24,69 +26,66 @@ class AboutSection extends StatelessWidget {
             children: [
               const AnimatedSection(child: SectionHeader(index: "01", title: "About Me")),
               const SizedBox(height: 36),
-              Flex(
-                direction: isMobile ? Axis.vertical : Axis.horizontal,
-                crossAxisAlignment: isMobile ? CrossAxisAlignment.start : CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: AnimatedSection(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Education",
-                            style: AppTheme.body(size: 13, color: AppColors.secondary, weight: FontWeight.w700),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(PortfolioData.education, style: AppTheme.body(size: 16, color: AppColors.textPrimary)),
-                          const SizedBox(height: 28),
-                          Text(
-                            "Highlights",
-                            style: AppTheme.body(size: 13, color: AppColors.secondary, weight: FontWeight.w700),
-                          ),
-                          const SizedBox(height: 10),
-                          for (final item in PortfolioData.additional)
+
+              // Education + Highlights — always full width, always first.
+              AnimatedSection(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Education",
+                      style: AppTheme.body(size: 13, color: AppColors.secondary, weight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(PortfolioData.education, style: AppTheme.body(size: 16, color: AppColors.textPrimary)),
+                    const SizedBox(height: 28),
+                    Text(
+                      "Highlights",
+                      style: AppTheme.body(size: 13, color: AppColors.secondary, weight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 10),
+                    for (final item in PortfolioData.additional)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 7),
-                                    child: Container(
-                                      width: 6,
-                                      height: 6,
-                                      decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(child: Text(item, style: AppTheme.body(size: 15.5))),
-                                ],
+                              padding: const EdgeInsets.only(top: 7),
+                              child: Container(
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle),
                               ),
                             ),
-                        ],
+                            const SizedBox(width: 12),
+                            Expanded(child: Text(item, style: AppTheme.body(size: 15.5))),
+                          ],
+                        ),
                       ),
-                    ),
-                  ),
-                  SizedBox(width: isMobile ? 0 : 60, height: isMobile ? 40 : 0),
-                  Expanded(
-                    flex: 2,
-                    child: AnimatedSection(
-                      delay: 150.ms,
-                      child: Wrap(
-                        spacing: 16,
-                        runSpacing: 16,
-                        children: const [
-                          _StatCard(value: "400+", label: "Problems Solved"),
-                          _StatCard(value: "2+", label: "Live Projects"),
-                          _StatCard(value: "5", label: "State Mgmt Tools"),
-                          _StatCard(value: "SIH", label: "2024 Participant"),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 36),
+
+              // Stats — always below Education/Highlights, always a proper grid.
+              AnimatedSection(
+                delay: 150.ms,
+                child: GridView.count(
+                  crossAxisCount: gridColumns,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisSpacing: 14,
+                  mainAxisSpacing: 14,
+                  childAspectRatio: isMobile ? 1.5 : 1.35,
+                  children: const [
+                    _StatCard(value: "400+", label: "Problems Solved"),
+                    _StatCard(value: "2+", label: "Live Projects"),
+                    _StatCard(value: "5", label: "State Mgmt Tools"),
+                    _StatCard(value: "SIH", label: "2024 Participant"),
+                  ],
+                ),
               ),
             ],
           ),
@@ -115,9 +114,9 @@ class _StatCardState extends State<_StatCard> {
       onExit: (_) => setState(() => _hover = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        width: 160,
-        height: 118,
-        padding: const EdgeInsets.all(18),
+        width: double.infinity,
+        height: double.infinity,
+        padding: const EdgeInsets.all(16),
         transform: Matrix4.identity()..translate(0.0, _hover ? -4.0 : 0.0),
         decoration: BoxDecoration(
           color: AppColors.surface,
@@ -135,15 +134,15 @@ class _StatCardState extends State<_StatCard> {
                 widget.value,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppTheme.heading(size: 26, weight: FontWeight.w800),
+                style: AppTheme.heading(size: 24, weight: FontWeight.w800),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               widget.label,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: AppTheme.body(size: 12.5, weight: FontWeight.w500),
+              style: AppTheme.body(size: 12, weight: FontWeight.w500),
             ),
           ],
         ),

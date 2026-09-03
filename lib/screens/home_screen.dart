@@ -55,25 +55,31 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: NavBar(sectionKeys: _sectionKeys, onNavTap: _scrollTo),
-      body: SingleChildScrollView(
-        controller: _scrollController,
-        physics: const BouncingScrollPhysics(),
-        child: Column(
-          children: [
-            HeroSection(
-              onProjectsTap: () => _scrollTo(_projectsKey),
-              onContactTap: () => _scrollTo(_contactKey),
+      body: Column(
+        children: [
+          FloatingNavBar(sectionKeys: _sectionKeys, onNavTap: _scrollTo),
+          Expanded(
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                children: [
+                  HeroSection(
+                    onProjectsTap: () => _scrollTo(_projectsKey),
+                    onContactTap: () => _scrollTo(_contactKey),
+                  ),
+                  Container(key: _aboutKey, child: const AboutSection()),
+                  Container(key: _skillsKey, child: const SkillsSection()),
+                  Container(key: _experienceKey, child: const ExperienceSection()),
+                  Container(key: _projectsKey, child: const ProjectsSection()),
+                  const CertificationsSection(),
+                  Container(key: _contactKey, child: const ContactSection()),
+                  const Footer(),
+                ],
+              ),
             ),
-            Container(key: _aboutKey, child: const AboutSection()),
-            Container(key: _skillsKey, child: const SkillsSection()),
-            Container(key: _experienceKey, child: const ExperienceSection()),
-            Container(key: _projectsKey, child: const ProjectsSection()),
-            const CertificationsSection(),
-            Container(key: _contactKey, child: const ContactSection()),
-            const Footer(),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

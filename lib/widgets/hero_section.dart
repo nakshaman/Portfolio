@@ -6,10 +6,15 @@ import 'package:url_launcher/url_launcher.dart';
 import '../data/data.dart';
 import '../theme/app_theme.dart';
 
-/// A coding/developer-themed Lottie animation. If it ever fails to load
-/// (offline, blocked network, dead link), [_DeveloperIllustration] is shown
-/// instead — see the errorBuilder below.
-const String _heroLottieUrl = "https://assets4.lottiefiles.com/packages/lf20_l3sfdi9x.json";
+/// Default illustration if you don't add a local asset (see README).
+/// Verified reachable at the time this was written — falls back to a
+/// built-in illustration automatically if it's ever unreachable.
+const String _heroLottieNetworkUrl = "https://assets4.lottiefiles.com/packages/lf20_l3sfdi9x.json";
+
+/// If you download one of the "boy/man with laptop" animations you liked
+/// and drop it at this path (see README), it's used instead of the network
+/// one automatically — no code changes needed.
+const String _heroLottieAssetPath = "assets/animations/coding.json";
 
 class HeroSection extends StatefulWidget {
   final VoidCallback onProjectsTap;
@@ -28,7 +33,7 @@ class _HeroSectionState extends State<HeroSection> {
   void initState() {
     super.initState();
     _timer = Timer.periodic(const Duration(seconds: 2, milliseconds: 400), (_) {
-      setState(() => _roleIndex = (_roleIndex + 1) % PortfolioData.roles.length);
+      if (mounted) setState(() => _roleIndex = (_roleIndex + 1) % PortfolioData.roles.length);
     });
   }
 
@@ -43,179 +48,234 @@ class _HeroSectionState extends State<HeroSection> {
     final isMobile = Responsive.isMobile(context);
     final isTablet = Responsive.isTablet(context);
     final pad = Responsive.horizontalPadding(context);
-    // Full first-viewport height (minus the nav bar) so the hero never
-    // looks like it "cuts off" halfway down the screen.
-    final viewportHeight = MediaQuery.of(context).size.height - 76;
-    final heroHeight = viewportHeight < 620 ? 620.0 : viewportHeight;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final cardMinHeight = isMobile ? screenHeight * 0.86 : (isTablet ? 640.0 : 700.0);
+    final illustrationSize = isMobile ? 140.0 : (isTablet ? 170.0 : 190.0);
 
-    final textColumn = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.center,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-          decoration: BoxDecoration(
-            border: Border.all(color: AppColors.border),
-            borderRadius: BorderRadius.circular(30),
-            color: AppColors.surface.withOpacity(0.6),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(color: AppColors.secondary, shape: BoxShape.circle),
-              ).animate(onPlay: (c) => c.repeat(reverse: true)).fadeIn(duration: 900.ms).then().fadeOut(duration: 900.ms),
-              const SizedBox(width: 8),
-              Text("Available for opportunities", style: AppTheme.mono(size: 12.5)),
-            ],
-          ),
-        ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.2, end: 0),
-
-        const SizedBox(height: 26),
-
-        Text(
-          "Hi, I'm",
-          style: AppTheme.heading(size: isMobile ? 22 : 26, weight: FontWeight.w500)
-              .copyWith(color: AppColors.textSecondary),
-        ).animate().fadeIn(delay: 150.ms, duration: 500.ms).slideY(begin: 0.2, end: 0),
-
-        const SizedBox(height: 6),
-
-        ShaderMask(
-          shaderCallback: (bounds) => AppColors.heroGradient.createShader(bounds),
-          child: Text(
-            PortfolioData.name,
-            style: AppTheme.heading(size: isMobile ? 40 : (isTablet ? 56 : 68), weight: FontWeight.w800),
-          ),
-        ).animate().fadeIn(delay: 280.ms, duration: 600.ms).slideY(begin: 0.25, end: 0),
-
-        const SizedBox(height: 18),
-
-        // Fixed-alignment role switcher: layoutBuilder pins every child to
-        // the left so incoming/outgoing text never overlaps vertically.
-        SizedBox(
-          height: isMobile ? 30 : 40,
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 420),
-            switchInCurve: Curves.easeOut,
-            switchOutCurve: Curves.easeIn,
-            layoutBuilder: (currentChild, previousChildren) => Stack(
-              alignment: Alignment.centerLeft,
-              children: [...previousChildren, if (currentChild != null) currentChild],
-            ),
-            transitionBuilder: (child, anim) => FadeTransition(
-              opacity: anim,
-              child: SlideTransition(
-                position: Tween<Offset>(begin: const Offset(0, 0.35), end: Offset.zero).animate(anim),
-                child: child,
-              ),
-            ),
-            child: Row(
-              key: ValueKey(_roleIndex),
-              mainAxisSize: MainAxisSize.min,
+    return Padding(
+      padding: EdgeInsets.fromLTRB(pad, 22, pad, 40),
+      // ConstrainedBox with only minHeight (not a fixed height) — this lets
+      // the card grow taller than cardMinHeight if the content needs more
+      // room (long text on a short/narrow window), instead of clipping it.
+      // Content below no longer uses Spacer (which needs a bounded height
+      // and would crash here), so this is safe inside a scroll view.
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: cardMinHeight),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(isMobile ? 28 : 40),
+          child: Container(
+            decoration: const BoxDecoration(color: AppColors.surface),
+            child: Stack(
+              fit: StackFit.passthrough,
               children: [
-                Icon(Icons.bolt_rounded, color: AppColors.secondary, size: isMobile ? 18 : 24),
-                const SizedBox(width: 8),
-                Text(
-                  PortfolioData.roles[_roleIndex],
-                  style: AppTheme.heading(size: isMobile ? 18 : 26, weight: FontWeight.w600),
+                // Ambient glow blobs, clipped to the card's rounded corners.
+                Positioned(
+                  top: -100,
+                  right: -80,
+                  child: _GlowOrb(color: AppColors.primary, size: isMobile ? 240 : 420),
+                ),
+                Positioned(
+                  bottom: -80,
+                  left: -100,
+                  child: _GlowOrb(color: AppColors.secondary, size: isMobile ? 220 : 380, delay: 900),
+                ),
+                Positioned(
+                  top: 60,
+                  left: -60,
+                  child: _GlowOrb(color: AppColors.accent, size: isMobile ? 140 : 220, delay: 1500),
+                ),
+
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: isMobile ? 22 : 56, vertical: isMobile ? 40 : 56),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      _HeroIllustration(size: illustrationSize)
+                          .animate()
+
+                          .fadeIn(duration: 700.ms)
+                          .scaleXY(begin: 0.85, end: 1, curve: Curves.easeOutBack),
+
+                      const SizedBox(height: 28),
+
+                      Text(
+                        "Hi, I'm",
+                        textAlign: TextAlign.center,
+                        style: AppTheme.heading(size: isMobile ? 18 : 22, weight: FontWeight.w500)
+                            .copyWith(color: AppColors.textSecondary),
+                      ).animate().fadeIn(delay: 150.ms, duration: 500.ms).slideY(begin: 0.2, end: 0),
+
+                      const SizedBox(height: 8),
+
+                      ShaderMask(
+                        shaderCallback: (bounds) => AppColors.heroGradient.createShader(bounds),
+                        child: Text(
+                          PortfolioData.name,
+                          textAlign: TextAlign.center,
+                          style: AppTheme.heading(
+                            size: isMobile ? 38 : (isTablet ? 54 : 64),
+                            weight: FontWeight.w800,
+                          ),
+                        ),
+                      ).animate().fadeIn(delay: 280.ms, duration: 600.ms).slideY(begin: 0.25, end: 0),
+
+                      const SizedBox(height: 16),
+
+                      // Fixed-alignment role switcher — layoutBuilder centers
+                      // every child on the same baseline so incoming/outgoing
+                      // text never overlaps unevenly.
+                      SizedBox(
+                        height: isMobile ? 30 : 38,
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 420),
+                          switchInCurve: Curves.easeOut,
+                          switchOutCurve: Curves.easeIn,
+                          layoutBuilder: (currentChild, previousChildren) => Stack(
+                            alignment: Alignment.center,
+                            children: [...previousChildren, if (currentChild != null) currentChild],
+                          ),
+                          transitionBuilder: (child, anim) => FadeTransition(
+                            opacity: anim,
+                            child: SlideTransition(
+                              position: Tween<Offset>(begin: const Offset(0, 0.35), end: Offset.zero).animate(anim),
+                              child: child,
+                            ),
+                          ),
+                          child: Row(
+                            key: ValueKey(_roleIndex),
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.bolt_rounded, color: AppColors.secondary, size: isMobile ? 16 : 22),
+                              const SizedBox(width: 8),
+                              Text(
+                                PortfolioData.roles[_roleIndex],
+                                style: AppTheme.heading(size: isMobile ? 16 : 22, weight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 22),
+
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 560),
+                        child: Text(
+                          PortfolioData.summary,
+                          textAlign: TextAlign.center,
+                          style: AppTheme.body(size: isMobile ? 14 : 16),
+                        ),
+                      ).animate().fadeIn(delay: 450.ms, duration: 600.ms),
+
+                      const SizedBox(height: 32),
+
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 14,
+                        runSpacing: 14,
+                        children: [
+                          _PrimaryButton(label: "View Projects", onTap: widget.onProjectsTap),
+                          _SecondaryButton(label: "Get In Touch", onTap: widget.onContactTap),
+                          _IconLink(icon: Icons.code_rounded, url: PortfolioData.githubUrl),
+                          _IconLink(icon: Icons.business_center_rounded, url: PortfolioData.linkedinUrl),
+                        ],
+                      ).animate().fadeIn(delay: 600.ms, duration: 600.ms).slideY(begin: 0.2, end: 0),
+
+                      SizedBox(height: isMobile ? 36 : 48),
+
+                      // Bottom scroll-cue pill, echoing the reference design.
+                      _ScrollCuePill(onTap: widget.onProjectsTap)
+                          .animate()
+                          .fadeIn(delay: 750.ms, duration: 500.ms),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
         ),
-
-        const SizedBox(height: 26),
-
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 620),
-          child: Text(PortfolioData.summary, style: AppTheme.body(size: isMobile ? 15 : 17)),
-        ).animate().fadeIn(delay: 450.ms, duration: 600.ms),
-
-        const SizedBox(height: 36),
-
-        Wrap(
-          spacing: 16,
-          runSpacing: 16,
-          children: [
-            _PrimaryButton(label: "View Projects", onTap: widget.onProjectsTap),
-            _SecondaryButton(label: "Get In Touch", onTap: widget.onContactTap),
-            _IconLink(icon: Icons.code_rounded, url: PortfolioData.githubUrl),
-            _IconLink(icon: Icons.business_center_rounded, url: PortfolioData.linkedinUrl),
-          ],
-        ).animate().fadeIn(delay: 600.ms, duration: 600.ms).slideY(begin: 0.2, end: 0),
-      ],
-    );
-
-    final illustration = _HeroIllustration(size: isMobile ? 240 : (isTablet ? 320 : 420));
-
-    return SizedBox(
-      width: double.infinity,
-      height: heroHeight,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Ambient animated glow blobs — sized to the full hero, not just
-          // the top slice, so the color never "runs out" partway down.
-          Positioned(
-            top: -80,
-            right: -60,
-            child: _GlowOrb(color: AppColors.primary, size: isMobile ? 220 : 380),
-          ),
-          Positioned(
-            bottom: -60,
-            left: -80,
-            child: _GlowOrb(color: AppColors.secondary, size: isMobile ? 200 : 340, delay: 900),
-          ),
-          Positioned(
-            bottom: 40,
-            right: isMobile ? -40 : 60,
-            child: _GlowOrb(color: AppColors.accent, size: isMobile ? 160 : 260, delay: 1500),
-          ),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: pad, vertical: isMobile ? 40 : 20),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: Responsive.maxContentWidth),
-                child: isMobile
-                    ? SingleChildScrollView(
-                        physics: const NeverScrollableScrollPhysics(),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            illustration.animate().fadeIn(duration: 700.ms).scaleXY(begin: 0.9, end: 1),
-                            const SizedBox(height: 12),
-                            textColumn,
-                          ],
-                        ),
-                      )
-                    : Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Expanded(flex: 6, child: textColumn),
-                          const SizedBox(width: 32),
-                          Expanded(
-                            flex: 5,
-                            child: Center(
-                              child: illustration.animate().fadeIn(duration: 800.ms, delay: 200.ms).scaleXY(begin: 0.88, end: 1, curve: Curves.easeOutBack),
-                            ),
-                          ),
-                        ],
-                      ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
 }
 
-/// Wraps the Lottie animation with a floating "bob" motion and a reliable
-/// fallback illustration if the network animation can't be reached.
+class _ScrollCuePill extends StatefulWidget {
+  final VoidCallback onTap;
+  const _ScrollCuePill({required this.onTap});
+
+  @override
+  State<_ScrollCuePill> createState() => _ScrollCuePillState();
+}
+
+class _ScrollCuePillState extends State<_ScrollCuePill> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isMobile = Responsive.isMobile(context);
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+          decoration: BoxDecoration(
+            color: _hover ? AppColors.surfaceAlt : AppColors.surfaceAlt.withOpacity(0.6),
+            borderRadius: BorderRadius.circular(100),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 6,
+            children: [
+              Text(
+                isMobile ? "Flutter · Firebase · Clean Code" : "Flutter  →  Firebase  →  Clean Code",
+                style: AppTheme.mono(size: 11.5, color: AppColors.textSecondary),
+              ),
+              Text("·", style: AppTheme.mono(size: 11.5, color: AppColors.textSecondary)),
+              Text("See more", style: AppTheme.mono(size: 11.5)),
+              Icon(Icons.keyboard_arrow_down_rounded, size: 15, color: AppColors.secondary)
+                  .animate(onPlay: (c) => c.repeat(reverse: true))
+                  .moveY(begin: 0, end: 4, duration: 700.ms, curve: Curves.easeInOut),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GlowOrb extends StatelessWidget {
+  final Color color;
+  final double size;
+  final int delay;
+  const _GlowOrb({required this.color, required this.size, this.delay = 0});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(colors: [color.withOpacity(0.35), color.withOpacity(0.0)]),
+      ),
+    )
+        .animate(onPlay: (c) => c.repeat(reverse: true))
+        .scaleXY(begin: 1, end: 1.15, duration: 3800.ms, delay: delay.ms, curve: Curves.easeInOut)
+        .then()
+        .move(begin: Offset.zero, end: const Offset(10, 14), duration: 3800.ms, curve: Curves.easeInOut);
+  }
+}
+
+/// Loads the local asset first (if you added your preferred animation — see
+/// README), falls back to the network URL, and finally to a small built-in
+/// illustration if neither is available. The hero never breaks.
 class _HeroIllustration extends StatelessWidget {
   final double size;
   const _HeroIllustration({required this.size});
@@ -225,26 +285,59 @@ class _HeroIllustration extends StatelessWidget {
     return SizedBox(
       width: size,
       height: size,
-      child: lottie.Lottie.network(
-        _heroLottieUrl,
-        fit: BoxFit.contain,
-        repeat: true,
-        errorBuilder: (context, error, stackTrace) => _DeveloperIllustration(size: size),
-        frameBuilder: (context, child, composition) {
-          if (composition == null) {
-            return _DeveloperIllustration(size: size);
+      child: FutureBuilder<bool>(
+        future: _assetExists(context),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const SizedBox.shrink();
           }
-          return child;
+          final useAsset = snapshot.data ?? false;
+          return (useAsset
+                  ? lottie.Lottie.asset(
+                      _heroLottieAssetPath,
+                      fit: BoxFit.contain,
+                      repeat: true,
+                      errorBuilder: (context, error, stackTrace) => _NetworkOrFallback(size: size),
+                    )
+                  : _NetworkOrFallback(size: size))
+              .animate(onPlay: (c) => c.repeat(reverse: true))
+              .moveY(begin: 0, end: -12, duration: 2600.ms, curve: Curves.easeInOut);
         },
       ),
-    )
-        .animate(onPlay: (c) => c.repeat(reverse: true))
-        .moveY(begin: 0, end: -14, duration: 2600.ms, curve: Curves.easeInOut);
+    );
+  }
+
+  Future<bool> _assetExists(BuildContext context) async {
+    try {
+      await DefaultAssetBundle.of(context).load(_heroLottieAssetPath);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 }
 
-/// A dependency-free illustration used if the Lottie network asset fails to
-/// load (e.g. offline). Keeps the hero from ever looking broken.
+class _NetworkOrFallback extends StatelessWidget {
+  final double size;
+  const _NetworkOrFallback({required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return lottie.Lottie.network(
+      _heroLottieNetworkUrl,
+      fit: BoxFit.contain,
+      repeat: true,
+      errorBuilder: (context, error, stackTrace) => _DeveloperIllustration(size: size),
+      frameBuilder: (context, child, composition) {
+        if (composition == null) return _DeveloperIllustration(size: size);
+        return child;
+      },
+    );
+  }
+}
+
+/// A dependency-free illustration used if neither the local asset nor the
+/// network animation is available. Keeps the hero from ever looking broken.
 class _DeveloperIllustration extends StatelessWidget {
   final double size;
   const _DeveloperIllustration({required this.size});
@@ -269,7 +362,7 @@ class _DeveloperIllustration extends StatelessWidget {
             width: size * 0.62,
             height: size * 0.44,
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: AppColors.surfaceAlt,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: AppColors.border, width: 2),
             ),
@@ -306,29 +399,6 @@ class _DeveloperIllustration extends StatelessWidget {
   }
 }
 
-class _GlowOrb extends StatelessWidget {
-  final Color color;
-  final double size;
-  final int delay;
-  const _GlowOrb({required this.color, required this.size, this.delay = 0});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(colors: [color.withOpacity(0.35), color.withOpacity(0.0)]),
-      ),
-    )
-        .animate(onPlay: (c) => c.repeat(reverse: true))
-        .scaleXY(begin: 1, end: 1.15, duration: 3800.ms, delay: delay.ms, curve: Curves.easeInOut)
-        .then()
-        .move(begin: Offset.zero, end: const Offset(10, 14), duration: 3800.ms, curve: Curves.easeInOut);
-  }
-}
-
 class _PrimaryButton extends StatefulWidget {
   final String label;
   final VoidCallback onTap;
@@ -352,7 +422,7 @@ class _PrimaryButtonState extends State<_PrimaryButton> {
           duration: const Duration(milliseconds: 200),
           transform: Matrix4.identity()..scale(_hover ? 1.03 : 1.0),
           transformAlignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 15),
           decoration: BoxDecoration(
             gradient: AppColors.heroGradient,
             borderRadius: BorderRadius.circular(12),
@@ -360,7 +430,7 @@ class _PrimaryButtonState extends State<_PrimaryButton> {
                 ? [BoxShadow(color: AppColors.primary.withOpacity(0.45), blurRadius: 24, offset: const Offset(0, 8))]
                 : [],
           ),
-          child: Text(widget.label, style: AppTheme.body(size: 15, color: Colors.white, weight: FontWeight.w600)),
+          child: Text(widget.label, style: AppTheme.body(size: 14.5, color: Colors.white, weight: FontWeight.w600)),
         ),
       ),
     );
@@ -388,13 +458,13 @@ class _SecondaryButtonState extends State<_SecondaryButton> {
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 15),
           decoration: BoxDecoration(
             border: Border.all(color: _hover ? AppColors.secondary : AppColors.border),
             borderRadius: BorderRadius.circular(12),
             color: _hover ? AppColors.surfaceAlt : Colors.transparent,
           ),
-          child: Text(widget.label, style: AppTheme.body(size: 15, color: AppColors.textPrimary, weight: FontWeight.w600)),
+          child: Text(widget.label, style: AppTheme.body(size: 14.5, color: AppColors.textPrimary, weight: FontWeight.w600)),
         ),
       ),
     );
@@ -422,14 +492,14 @@ class _IconLinkState extends State<_IconLink> {
         onTap: () => launchUrl(Uri.parse(widget.url), mode: LaunchMode.externalApplication),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          width: 52,
-          height: 52,
+          width: 48,
+          height: 48,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(color: _hover ? AppColors.secondary : AppColors.border),
             color: _hover ? AppColors.surfaceAlt : Colors.transparent,
           ),
-          child: Icon(widget.icon, color: AppColors.textPrimary, size: 20),
+          child: Icon(widget.icon, color: AppColors.textPrimary, size: 19),
         ),
       ),
     );

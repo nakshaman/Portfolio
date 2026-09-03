@@ -1,50 +1,58 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../data/data.dart';
 import '../theme/app_theme.dart';
 
-class NavBar extends StatefulWidget implements PreferredSizeWidget {
+/// A floating, pill-shaped nav bar (rounded, elevated, sits with margin from
+/// the screen edges) — the same feel as awwwards-style portfolio sites.
+class FloatingNavBar extends StatefulWidget {
   final Map<String, GlobalKey> sectionKeys;
   final void Function(GlobalKey key) onNavTap;
 
-  const NavBar({super.key, required this.sectionKeys, required this.onNavTap});
+  const FloatingNavBar({super.key, required this.sectionKeys, required this.onNavTap});
 
   @override
-  Size get preferredSize => const Size.fromHeight(76);
-
-  @override
-  State<NavBar> createState() => _NavBarState();
+  State<FloatingNavBar> createState() => _FloatingNavBarState();
 }
 
-class _NavBarState extends State<NavBar> {
-  bool _menuOpen = false;
-
+class _FloatingNavBarState extends State<FloatingNavBar> {
   @override
   Widget build(BuildContext context) {
     final isMobile = Responsive.isMobile(context);
+    final pad = Responsive.horizontalPadding(context);
 
-    return AppBar(
-      backgroundColor: AppColors.background.withOpacity(0.85),
-      elevation: 0,
-      surfaceTintColor: Colors.transparent,
-      titleSpacing: Responsive.horizontalPadding(context),
-      title: Row(
-        children: [
-          ShaderMask(
-            shaderCallback: (bounds) => AppColors.heroGradient.createShader(bounds),
-            child: Text("AK.", style: AppTheme.heading(size: 24, weight: FontWeight.w800)),
-          ),
-        ],
+    return Padding(
+      padding: EdgeInsets.fromLTRB(pad, 18, pad, 0),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 22, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.surface.withOpacity(0.75),
+          borderRadius: BorderRadius.circular(100),
+          border: Border.all(color: AppColors.border),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 24, offset: const Offset(0, 8)),
+          ],
+        ),
+        child: Row(
+          children: [
+            ShaderMask(
+              shaderCallback: (bounds) => AppColors.heroGradient.createShader(bounds),
+              child: Text("AK.", style: AppTheme.heading(size: 20, weight: FontWeight.w800)),
+            ),
+            const SizedBox(width: 6),
+            if (!isMobile)
+              Text("Aman Kumar", style: AppTheme.body(size: 13.5, color: AppColors.textSecondary, weight: FontWeight.w500)),
+            const Spacer(),
+            if (!isMobile) ..._desktopLinks() else _mobileMenuButton(),
+          ],
+        ),
       ),
-      actions: [
-        if (!isMobile) ..._desktopLinks(context) else _mobileMenuButton(),
-        SizedBox(width: Responsive.horizontalPadding(context) - (isMobile ? 12 : 0)),
-      ],
     );
   }
 
-  List<Widget> _desktopLinks(BuildContext context) {
-    final labels = ["About", "Skills", "Experience", "Projects", "Contact"];
+  List<Widget> _desktopLinks() {
+    final labels = ["About", "Skills", "Experience", "Projects"];
     return [
       for (final label in labels)
         _NavLink(
@@ -54,14 +62,29 @@ class _NavBarState extends State<NavBar> {
             if (key != null) widget.onNavTap(key);
           },
         ),
+      const SizedBox(width: 6),
+      _PillCTA(
+        label: "Email",
+        onTap: () => launchUrl(Uri.parse("mailto:${PortfolioData.email}")),
+      ),
       const SizedBox(width: 8),
+      _PillCTA(
+        label: "Contact",
+        filled: true,
+        onTap: () {
+          final key = widget.sectionKeys["Contact"];
+          if (key != null) widget.onNavTap(key);
+        },
+      ),
     ];
   }
 
   Widget _mobileMenuButton() {
     return IconButton(
-      icon: Icon(_menuOpen ? Icons.close : Icons.menu, color: AppColors.textPrimary),
+      icon: const Icon(Icons.menu_rounded, color: AppColors.textPrimary),
       onPressed: () => _showMobileMenu(context),
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(),
     );
   }
 
@@ -119,31 +142,60 @@ class _NavLinkState extends State<_NavLink> {
       onExit: (_) => setState(() => _hovering = false),
       cursor: SystemMouseCursors.click,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
         child: InkWell(
           onTap: widget.onTap,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                widget.label,
-                style: AppTheme.body(
-                  size: 15,
-                  color: _hovering ? AppColors.textPrimary : AppColors.textSecondary,
-                  weight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 4),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                height: 2,
-                width: _hovering ? 18 : 0,
-                decoration: BoxDecoration(
-                  gradient: AppColors.heroGradient,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ],
+          child: Text(
+            widget.label,
+            style: AppTheme.body(
+              size: 14,
+              color: _hovering ? AppColors.textPrimary : AppColors.textSecondary,
+              weight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PillCTA extends StatefulWidget {
+  final String label;
+  final VoidCallback onTap;
+  final bool filled;
+  const _PillCTA({required this.label, required this.onTap, this.filled = false});
+
+  @override
+  State<_PillCTA> createState() => _PillCTAState();
+}
+
+class _PillCTAState extends State<_PillCTA> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+          decoration: BoxDecoration(
+            gradient: widget.filled ? AppColors.heroGradient : null,
+            color: widget.filled ? null : (_hover ? AppColors.surfaceAlt : Colors.transparent),
+            borderRadius: BorderRadius.circular(100),
+            border: widget.filled ? null : Border.all(color: AppColors.border),
+          ),
+          child: Text(
+            widget.label,
+            style: AppTheme.body(
+              size: 13,
+              color: widget.filled ? Colors.white : AppColors.textPrimary,
+              weight: FontWeight.w600,
+            ),
           ),
         ),
       ),
